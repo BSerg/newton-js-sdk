@@ -1,3 +1,3 @@
-export const hello = (name: string): string => {
-    return `Hello ${name}`;
-}
+import NewtonAuth from './newton-auth';
+
+export {NewtonAuth};
