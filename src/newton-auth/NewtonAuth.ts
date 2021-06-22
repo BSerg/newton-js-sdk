@@ -62,12 +62,12 @@ class NewtonAuth {
 
     public async verifyPhone(code: string): Promise<AuthResponse> {
         this.validateFlowStep(AuthFlowStep.VERIFY_PHONE_CODE);
-        return this.requestServiceToken({code}, {Authorization: `Bearer ${this._serviceToken}`});
+        return this.requestServiceToken({code});
     }
 
-    public async sendEmailCode(): Promise<AuthResponse> {
+    public async sendEmailCode(email?: string): Promise<AuthResponse> {
         this.validateFlowStep(AuthFlowStep.SEND_EMAIL_CODE);
-        return this.requestServiceToken();
+        return this.requestServiceToken({email});
     }
 
     public async verifyEmail(code: string): Promise<AuthResponse> {
@@ -77,7 +77,7 @@ class NewtonAuth {
 
     public async authorize(password?: string): Promise<AuthResponse> {
         this.validateFlowStep(AuthFlowStep.GET_MAIN_TOKEN);
-        if (this._authState?.scheme != AuthFlowScheme.SHORT && !password) {
+        if (this._authState?.loginFlow != AuthFlowScheme.SHORT && !password) {
             throw new AuthError({
                 error: AuthErrorType.PASSWORD_MISSING,
                 error_description: 'Password is required for this flow',
@@ -113,19 +113,19 @@ class NewtonAuth {
     }
 
     private validateFlowScheme(scheme: AuthFlowScheme): void {
-        if (this._authState?.scheme !== scheme) {
+        if (this._authState?.loginFlow !== scheme) {
             throw new AuthError({
                 error: AuthErrorType.INCORRECT_FLOW_SEQUENCE,
-                error_description: `Method is not allowed in scheme ${this._authState?.scheme}`,
+                error_description: `Method is not allowed in scheme ${this._authState?.loginFlow}`,
             });
         }
     }
 
     private validateFlowStep(step: AuthFlowStep): void {
-        if (this._authState?.step !== step) {
+        if (this._authState?.loginStep !== step) {
             throw new AuthError({
                 error: AuthErrorType.INCORRECT_FLOW_SEQUENCE,
-                error_description: `Method is not allowed on step ${this._authState?.step}`,
+                error_description: `Method is not allowed on step ${this._authState?.loginStep}`,
             });
         }
     }

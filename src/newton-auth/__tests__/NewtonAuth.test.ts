@@ -31,17 +31,22 @@ describe('config', () => {
     });
 });
 
-describe('validateFlowStep', () => {
+describe('validateFlow', () => {
     it('should throw error if step validation is failed', () => {
-        expect(newtonAuth.authState?.step).toBeUndefined();
+        expect(newtonAuth.authState?.loginStep).toBeUndefined();
         const protoNewtonAuth = Object.getPrototypeOf(newtonAuth);
         expect(() => protoNewtonAuth.validateFlowStep(AuthFlowStep.GET_MAIN_TOKEN)).toThrow(AuthError);
+    });
+    it('should throw error if scheme validation is failed', () => {
+        expect(newtonAuth.authState?.loginFlow).toBeUndefined();
+        const protoNewtonAuth = Object.getPrototypeOf(newtonAuth);
+        expect(() => protoNewtonAuth.validateFlowScheme(AuthFlowScheme.SHORT)).toThrow(AuthError);
     });
 });
 
 describe('validateFlowScheme', () => {
     it('should throw error if scheme validation is failed', () => {
-        expect(newtonAuth.authState?.scheme).toBeUndefined();
+        expect(newtonAuth.authState?.loginFlow).toBeUndefined();
         const protoNewtonAuth = Object.getPrototypeOf(newtonAuth);
         expect(() => protoNewtonAuth.validateFlowScheme(AuthFlowScheme.SHORT)).toThrow(AuthError);
     });
@@ -50,7 +55,7 @@ describe('validateFlowScheme', () => {
 describe('SHORT flow', () => {
     describe('sendPhoneCode', () => {
         beforeEach(() => {
-            mockResponse(sendPhoneCodeHttpResponse);
+            mockResponse(responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.SEND_PHONE_CODE]);
         });
 
         it('should call post request once', async () => {
@@ -60,8 +65,10 @@ describe('SHORT flow', () => {
 
         it('should keep correct auth flow state', async () => {
             await newtonAuth.sendPhoneCode(phone_number);
-            expect(newtonAuth.authState?.scheme).toEqual(AuthFlowScheme.SHORT);
-            expect(newtonAuth.authState?.step).toEqual(AuthFlowStep.VERIFY_PHONE_CODE);
+            expect(newtonAuth.authState?.loginFlow).toEqual(AuthFlowScheme.SHORT);
+            expect(newtonAuth.authState?.loginStep).toEqual(AuthFlowStep.VERIFY_PHONE_CODE);
+            expect(newtonAuth.authState?.codeCanBeResubmittedTimestamp).toBeTruthy();
+            expect(newtonAuth.authState?.codeExpiresTimestamp).toBeTruthy();
         });
 
         it('should resolve correct response', async () => {
@@ -69,8 +76,12 @@ describe('SHORT flow', () => {
             expect(result).toBeInstanceOf(AuthResponse);
             expect(result.accessTokenExpiresIn).toEqual(300);
             expect(result.refreshTokenExpiresIn).toEqual(1800);
-            expect(result.accessToken).toEqual(sendPhoneCodeHttpResponse.body.access_token);
-            expect(result.refreshToken).toEqual(sendPhoneCodeHttpResponse.body.refresh_token);
+            expect(result.accessToken).toEqual(
+                responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.SEND_PHONE_CODE].body.access_token,
+            );
+            expect(result.refreshToken).toEqual(
+                responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.SEND_PHONE_CODE].body.refresh_token,
+            );
         });
 
         it('should reset state', async () => {
@@ -123,12 +134,18 @@ describe('SHORT flow', () => {
             );
         });
 
+        it('should keep correct auth flow state', async () => {
+            mockResponse(responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.VERIFY_PHONE_CODE]);
+            await newtonAuth.verifyPhone(phone_code);
+            expect(newtonAuth.authState?.loginFlow).toEqual(AuthFlowScheme.SHORT);
+            expect(newtonAuth.authState?.loginStep).toEqual(AuthFlowStep.GET_MAIN_TOKEN);
+            expect(newtonAuth.authState?.phoneNumber).toEqual(phone_number);
+        });
+
         it('should resolve correct result', async () => {
             mockResponse(responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.VERIFY_PHONE_CODE]);
             const result = await newtonAuth.verifyPhone(phone_code);
             expect(result).toBeInstanceOf(AuthResponse);
-            expect(newtonAuth.authState.scheme).toEqual(AuthFlowScheme.SHORT);
-            expect(newtonAuth.authState.step).toEqual(AuthFlowStep.GET_MAIN_TOKEN);
         });
     });
 
@@ -150,8 +167,8 @@ describe('SHORT flow', () => {
             mockResponse(responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.GET_MAIN_TOKEN]);
             const result = await newtonAuth.authorize();
             expect(result).toBeInstanceOf(AuthResponse);
-            expect(newtonAuth.authState.scheme).toBeFalsy();
-            expect(newtonAuth.authState.step).toBeFalsy();
+            expect(newtonAuth.authState.loginFlow).toBeFalsy();
+            expect(newtonAuth.authState.loginStep).toBeFalsy();
             expect(newtonAuth.authState.userId).toBeTruthy();
         });
     });
@@ -173,11 +190,21 @@ describe('NORMAL flow', () => {
 });
 
 describe('NORMAL_WITH_EMAIL flow', () => {
-    test('flow should be processed correctly', async () => {
+    beforeEach(async () => {
         mockResponse(responseOfStep[AuthFlowScheme.NORMAL_WITH_EMAIL][AuthFlowStep.SEND_PHONE_CODE]);
         await newtonAuth.sendPhoneCode(phone_number);
         mockResponse(responseOfStep[AuthFlowScheme.NORMAL_WITH_EMAIL][AuthFlowStep.VERIFY_PHONE_CODE]);
         await newtonAuth.verifyPhone(phone_code);
+    });
+    test('sendEmailCode() should resolve correct response with email', async () => {
+        mockResponse(responseOfStep[AuthFlowScheme.NORMAL_WITH_EMAIL][AuthFlowStep.SEND_EMAIL_CODE]);
+        await expect(newtonAuth.sendEmailCode(email)).resolves.toBeInstanceOf(AuthResponse);
+    });
+    test('sendEmailCode() should resolve correct response without email', async () => {
+        mockResponse(responseOfStep[AuthFlowScheme.NORMAL_WITH_EMAIL][AuthFlowStep.SEND_EMAIL_CODE]);
+        await expect(newtonAuth.sendEmailCode()).resolves.toBeInstanceOf(AuthResponse);
+    });
+    test('flow should be processed correctly', async () => {
         mockResponse(responseOfStep[AuthFlowScheme.NORMAL_WITH_EMAIL][AuthFlowStep.SEND_EMAIL_CODE]);
         await newtonAuth.sendEmailCode();
         await expect(newtonAuth.sendEmailCode()).rejects.toHaveProperty('error', AuthErrorType.INCORRECT_FLOW_SEQUENCE);
@@ -281,6 +308,7 @@ describe('revokeRefreshToken', () => {
 
 const phone_number = '+70123456789';
 const phone_code = '1111';
+const email = 'sample@mail.com';
 const email_code = '2222';
 const password = 'password';
 const newPassword = 'new_password';
@@ -334,7 +362,7 @@ const responseOfStep = {
             statusCode: 200,
             body: {
                 access_token:
-                    'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJ6Q2NVS1NRN3JZNkJNSVRWcDFzS09lejJUVE8tcElESGZLWW1EVmlnZEJNIn0.eyJleHAiOjE2MjM0MTIzNDcsImlhdCI6MTYyMzQxMjA0NywianRpIjoiMGRhZTIwYzQtM2U0MC00OTViLWE2Y2QtM2U5MGExMDNhYTQyIiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay5uZXd0b24tdGVjaG5vbG9neS5ydS9hdXRoL3JlYWxtcy9zZXJ2aWNlIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6Iis3MDEyMzQ1Njc4OSIsInR5cCI6IkJlYXJlciIsImF6cCI6InRlemlzIiwic2Vzc2lvbl9zdGF0ZSI6ImUxOTUwZGRmLTU4M2EtNDdkZS05MzNhLTFiMTVkMGVlYzc1ZCIsInBob25lX251bWJlciI6Iis3MDEyMzQ1Njc4OSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiLyoiXSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6IiIsImxvZ2luX3N0ZXAiOiJWRVJJRllfUEhPTkVfQ09ERSIsImxvZ2luX2Zsb3ciOiJTSE9SVCJ9.pHrJTmjsM_zkJjJ7_AXSlWMHyPvh8K5rm3C46x_Pn5BSZKsyKMmFV0VfN5Os-M2_zs8isut5ETVqeROy3xSDQWOlljysmyT5H2iBiev3JuW8AGgsQLVg7Q6aDa6MaW483eA7yxz5ZQZOusobom-1VEw-AKzxowNRnG07Nyn6MbOuf8MwEAFstmcCNwjdAEL7f6lUe3zCcvlCogOcZY8e_-546QzeIR64uGs9YOoHJ_jT891pkknZ75jLWZoeuZMT45169XFtTNxl3Njku1VfKXztUd0ZAYn0meMlYNc9mFxgHBknviC6ydSln_C11Q5SFrXRZNHHx_Q7pLoaKZLa_A',
+                    'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2MjQzNTY3NTEsImlhdCI6MTYyMzQxMjA0NywianRpIjoiMGRhZTIwYzQtM2U0MC00OTViLWE2Y2QtM2U5MGExMDNhYTQyIiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay5uZXd0b24tdGVjaG5vbG9neS5ydS9hdXRoL3JlYWxtcy9zZXJ2aWNlIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6Iis3MDEyMzQ1Njc4OSIsInR5cCI6IkJlYXJlciIsImF6cCI6InRlemlzIiwic2Vzc2lvbl9zdGF0ZSI6ImUxOTUwZGRmLTU4M2EtNDdkZS05MzNhLTFiMTVkMGVlYzc1ZCIsInBob25lX251bWJlciI6Iis3MDEyMzQ1Njc4OSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiLyoiXSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6IiIsImxvZ2luX3N0ZXAiOiJWRVJJRllfUEhPTkVfQ09ERSIsImxvZ2luX2Zsb3ciOiJTSE9SVCIsImNvZGVfY2FuX2JlX3Jlc3VibWl0dGVkX3RpbWVzdGFtcCI6MTYyNDM1MjkxNCwiY29kZV9leHBpcmVzX3RpbWVzdGFtcCI6MTYyNDM1MzE1NH0.7dlR-6Im-ubkGks22_4WUPoGbtZyoVtC9-O8xKwV-cU',
                 expires_in: 300,
                 refresh_expires_in: 1800,
                 refresh_token:
@@ -381,7 +409,7 @@ const responseOfStep = {
             statusCode: 200,
             body: {
                 access_token:
-                    'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2MjM4MzMyNjcsImlhdCI6MTYyMzQxMjA0NywianRpIjoiMGRhZTIwYzQtM2U0MC00OTViLWE2Y2QtM2U5MGExMDNhYTQyIiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay5uZXd0b24tdGVjaG5vbG9neS5ydS9hdXRoL3JlYWxtcy9zZXJ2aWNlIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6Iis3MDEyMzQ1Njc4OSIsInR5cCI6IkJlYXJlciIsImF6cCI6InRlemlzIiwic2Vzc2lvbl9zdGF0ZSI6ImUxOTUwZGRmLTU4M2EtNDdkZS05MzNhLTFiMTVkMGVlYzc1ZCIsInBob25lX251bWJlciI6Iis3MDEyMzQ1Njc4OSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiLyoiXSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6IiIsImxvZ2luX3N0ZXAiOiJWRVJJRllfUEhPTkVfQ09ERSIsImxvZ2luX2Zsb3ciOiJOT1JNQUwifQ.GFi7Pb9d-F9qcleQ08RWBSpz9HTs-4iq3IoKLBntnvQ',
+                    'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2MjQzNTY3OTcsImlhdCI6MTYyMzQxMjA0NywianRpIjoiMGRhZTIwYzQtM2U0MC00OTViLWE2Y2QtM2U5MGExMDNhYTQyIiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay5uZXd0b24tdGVjaG5vbG9neS5ydS9hdXRoL3JlYWxtcy9zZXJ2aWNlIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6Iis3MDEyMzQ1Njc4OSIsInR5cCI6IkJlYXJlciIsImF6cCI6InRlemlzIiwic2Vzc2lvbl9zdGF0ZSI6ImUxOTUwZGRmLTU4M2EtNDdkZS05MzNhLTFiMTVkMGVlYzc1ZCIsInBob25lX251bWJlciI6Iis3MDEyMzQ1Njc4OSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiLyoiXSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6IiIsImxvZ2luX3N0ZXAiOiJWRVJJRllfUEhPTkVfQ09ERSIsImxvZ2luX2Zsb3ciOiJOT1JNQUwiLCJjb2RlX2Nhbl9iZV9yZXN1Ym1pdHRlZF90aW1lc3RhbXAiOjE2MjQzNTI5MTQsImNvZGVfZXhwaXJlc190aW1lc3RhbXAiOjE2MjQzNTMxNTR9.jnRuGUt20PjdYaIr7L6_WiZgqR_zMhwtsM-xoGYrENo',
                 expires_in: 300,
                 refresh_expires_in: 1800,
                 refresh_token:
@@ -428,7 +456,7 @@ const responseOfStep = {
             statusCode: 200,
             body: {
                 access_token:
-                    'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2MjM4MzMzNDMsImlhdCI6MTYyMzQxMjA0NywianRpIjoiMGRhZTIwYzQtM2U0MC00OTViLWE2Y2QtM2U5MGExMDNhYTQyIiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay5uZXd0b24tdGVjaG5vbG9neS5ydS9hdXRoL3JlYWxtcy9zZXJ2aWNlIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6Iis3MDEyMzQ1Njc4OSIsInR5cCI6IkJlYXJlciIsImF6cCI6InRlemlzIiwic2Vzc2lvbl9zdGF0ZSI6ImUxOTUwZGRmLTU4M2EtNDdkZS05MzNhLTFiMTVkMGVlYzc1ZCIsInBob25lX251bWJlciI6Iis3MDEyMzQ1Njc4OSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiLyoiXSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6IiIsImxvZ2luX3N0ZXAiOiJWRVJJRllfUEhPTkVfQ09ERSIsImxvZ2luX2Zsb3ciOiJOT1JNQUxfV0lUSF9FTUFJTCJ9.hLTBAqoVkmZnDBYlRVWBE-3PW0gK8Ztd32tWlzPTIo4',
+                    'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2MjQzNTY4MjcsImlhdCI6MTYyMzQxMjA0NywianRpIjoiMGRhZTIwYzQtM2U0MC00OTViLWE2Y2QtM2U5MGExMDNhYTQyIiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay5uZXd0b24tdGVjaG5vbG9neS5ydS9hdXRoL3JlYWxtcy9zZXJ2aWNlIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6Iis3MDEyMzQ1Njc4OSIsInR5cCI6IkJlYXJlciIsImF6cCI6InRlemlzIiwic2Vzc2lvbl9zdGF0ZSI6ImUxOTUwZGRmLTU4M2EtNDdkZS05MzNhLTFiMTVkMGVlYzc1ZCIsInBob25lX251bWJlciI6Iis3MDEyMzQ1Njc4OSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiLyoiXSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6IiIsImxvZ2luX3N0ZXAiOiJWRVJJRllfUEhPTkVfQ09ERSIsImxvZ2luX2Zsb3ciOiJOT1JNQUxfV0lUSF9FTUFJTCIsImNvZGVfY2FuX2JlX3Jlc3VibWl0dGVkX3RpbWVzdGFtcCI6MTYyNDM1MjkxNCwiY29kZV9leHBpcmVzX3RpbWVzdGFtcCI6MTYyNDM1MzE1NH0.XrlggDBBj_7M9GWm_P89jnji14c8M-SmLMoxBU4mwdo',
                 expires_in: 300,
                 refresh_expires_in: 1800,
                 refresh_token:
@@ -458,7 +486,7 @@ const responseOfStep = {
             statusCode: 200,
             body: {
                 access_token:
-                    'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2MjM4MzMxNDUsImlhdCI6MTYyMzQxMjA0NywianRpIjoiMGRhZTIwYzQtM2U0MC00OTViLWE2Y2QtM2U5MGExMDNhYTQyIiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay5uZXd0b24tdGVjaG5vbG9neS5ydS9hdXRoL3JlYWxtcy9zZXJ2aWNlIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6Iis3MDEyMzQ1Njc4OSIsInR5cCI6IkJlYXJlciIsImF6cCI6InRlemlzIiwic2Vzc2lvbl9zdGF0ZSI6ImUxOTUwZGRmLTU4M2EtNDdkZS05MzNhLTFiMTVkMGVlYzc1ZCIsInBob25lX251bWJlciI6Iis3MDEyMzQ1Njc4OSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiLyoiXSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6IiIsImxvZ2luX3N0ZXAiOiJWRVJJRllfRU1BSUxfQ09ERSIsImxvZ2luX2Zsb3ciOiJOT1JNQUxfV0lUSF9FTUFJTCJ9.3I-tdh_DGB-XBgbTLOsM9oL4povXYCOWZCO1ITB3J_A',
+                    'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2MjQzNTY4NTQsImlhdCI6MTYyMzQxMjA0NywianRpIjoiMGRhZTIwYzQtM2U0MC00OTViLWE2Y2QtM2U5MGExMDNhYTQyIiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay5uZXd0b24tdGVjaG5vbG9neS5ydS9hdXRoL3JlYWxtcy9zZXJ2aWNlIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6Iis3MDEyMzQ1Njc4OSIsInR5cCI6IkJlYXJlciIsImF6cCI6InRlemlzIiwic2Vzc2lvbl9zdGF0ZSI6ImUxOTUwZGRmLTU4M2EtNDdkZS05MzNhLTFiMTVkMGVlYzc1ZCIsInBob25lX251bWJlciI6Iis3MDEyMzQ1Njc4OSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiLyoiXSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6IiIsImxvZ2luX3N0ZXAiOiJWRVJJRllfRU1BSUxfQ09ERSIsImxvZ2luX2Zsb3ciOiJOT1JNQUxfV0lUSF9FTUFJTCIsImNvZGVfY2FuX2JlX3Jlc3VibWl0dGVkX3RpbWVzdGFtcCI6MTYyNDM1MjkxNCwiY29kZV9leHBpcmVzX3RpbWVzdGFtcCI6MTYyNDM1MzE1NH0.ckdm9Oj3Kf3d-wuT4VAG87Ug-UmsxZpKJiakfSiCqNQ',
                 expires_in: 300,
                 refresh_expires_in: 1800,
                 refresh_token:

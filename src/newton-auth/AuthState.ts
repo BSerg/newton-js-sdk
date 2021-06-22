@@ -3,9 +3,12 @@ import jwtDecode from 'jwt-decode';
 interface IAccessToken {
     login_flow?: AuthFlowScheme;
     login_step?: AuthFlowStep;
+    phone_number?: string;
     masked_email?: string;
     bo_client_id?: string;
     user_id?: string;
+    code_can_be_resubmitted_timestamp?: number;
+    code_expires_timestamp?: number;
 }
 
 export enum AuthFlowScheme {
@@ -23,19 +26,25 @@ export enum AuthFlowStep {
 }
 
 class AuthState {
-    public readonly scheme?: AuthFlowScheme;
-    public readonly step?: AuthFlowStep;
+    public readonly loginFlow?: AuthFlowScheme;
+    public readonly loginStep?: AuthFlowStep;
+    public readonly phoneNumber?: string;
     public readonly maskedEmail?: string;
     public readonly boClientId?: string;
     public readonly userId?: string;
+    public readonly codeCanBeResubmittedTimestamp?: number;
+    public readonly codeExpiresTimestamp?: number;
 
     public constructor(token: string) {
         const data = jwtDecode<IAccessToken>(token);
-        this.scheme = data.login_flow;
-        this.step = data.login_step;
+        this.loginFlow = data.login_flow;
+        this.loginStep = data.login_step;
+        this.phoneNumber = data.phone_number;
         this.maskedEmail = data.masked_email;
         this.boClientId = data.bo_client_id;
         this.userId = data.user_id;
+        this.codeCanBeResubmittedTimestamp = data.code_can_be_resubmitted_timestamp;
+        this.codeExpiresTimestamp = data.code_expires_timestamp;
     }
 }
 
