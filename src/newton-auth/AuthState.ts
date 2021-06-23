@@ -1,6 +1,6 @@
 import jwtDecode from 'jwt-decode';
 
-interface IAccessToken {
+interface IServiceAccessToken {
     login_flow?: AuthFlowScheme;
     login_step?: AuthFlowStep;
     phone_number?: string;
@@ -36,7 +36,7 @@ class AuthState {
     public readonly codeExpiresTimestamp?: number;
 
     public constructor(token: string) {
-        const data = jwtDecode<IAccessToken>(token);
+        const data = jwtDecode<IServiceAccessToken>(token);
         this.loginFlow = data.login_flow;
         this.loginStep = data.login_step;
         this.phoneNumber = data.phone_number;

@@ -1,6 +1,6 @@
-import request, {head} from 'superagent';
+import request from 'superagent';
 
-import AuthError, {AuthErrorType} from './AuthError';
+import AuthError, {AuthErrorCode} from './AuthError';
 import AuthState, {AuthFlowScheme, AuthFlowStep} from './AuthState';
 import AuthResponse from './AuthReponse';
 
@@ -79,7 +79,7 @@ class NewtonAuth {
         this.validateFlowStep(AuthFlowStep.GET_MAIN_TOKEN);
         if (this._authState?.loginFlow != AuthFlowScheme.SHORT && !password) {
             throw new AuthError({
-                error: AuthErrorType.PASSWORD_MISSING,
+                error: AuthErrorCode.PASSWORD_MISSING,
                 error_description: 'Password is required for this flow',
             });
         }
@@ -115,7 +115,7 @@ class NewtonAuth {
     private validateFlowScheme(scheme: AuthFlowScheme): void {
         if (this._authState?.loginFlow !== scheme) {
             throw new AuthError({
-                error: AuthErrorType.INCORRECT_FLOW_SEQUENCE,
+                error: AuthErrorCode.INCORRECT_FLOW_SEQUENCE,
                 error_description: `Method is not allowed in scheme ${this._authState?.loginFlow}`,
             });
         }
@@ -124,7 +124,7 @@ class NewtonAuth {
     private validateFlowStep(step: AuthFlowStep): void {
         if (this._authState?.loginStep !== step) {
             throw new AuthError({
-                error: AuthErrorType.INCORRECT_FLOW_SEQUENCE,
+                error: AuthErrorCode.INCORRECT_FLOW_SEQUENCE,
                 error_description: `Method is not allowed on step ${this._authState?.loginStep}`,
             });
         }
@@ -176,7 +176,7 @@ class NewtonAuth {
                 throw err;
             }
             throw new AuthError({
-                error: AuthErrorType.UNKNOWN_ERROR,
+                error: AuthErrorCode.UNKNOWN_ERROR,
                 error_description: 'Unknown error',
             });
         }
@@ -184,14 +184,17 @@ class NewtonAuth {
 
     private async postRequest(url: string, params?: any, headers?: any) {
         try {
+            const _headers = {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                ...headers,
+            };
+            if (this._serviceToken) {
+                _headers['Authorization'] = `Bearer ${this._serviceToken}`;
+            }
             const resp = await request
                 .post(url)
                 .send(params)
-                .set({
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    Authorization: this._serviceToken ? `Bearer ${this._serviceToken}` : undefined,
-                    ...headers,
-                });
+                .set(_headers);
             if (resp.statusCode !== 200) {
                 throw new AuthError(resp.body);
             }
@@ -203,8 +206,11 @@ class NewtonAuth {
             if (err instanceof AuthError) {
                 throw err;
             }
+            if (err.response?.body) {
+                throw new AuthError(err.response.body)
+            }
             throw new AuthError({
-                error: AuthErrorType.UNKNOWN_ERROR,
+                error: AuthErrorCode.UNKNOWN_ERROR,
                 error_description: 'Unknown error',
             });
         }
