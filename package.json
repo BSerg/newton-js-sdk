@@ -1,17 +1,18 @@
 {
     "name": "@newton-technology/newton-sdk",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "description": "",
     "main": "dist/index.js",
     "files": [
         "dist/**/*"
     ],
     "scripts": {
-        "build-dev": "tsc && rollup -c",
-        "build": "NODE_ENV=production tsc && rollup -c",
+        "build-dev": "tsc && rollup -c && node ./setupBuildPackage.js",
+        "build": "NODE_ENV=production tsc && rollup -c && node ./setupBuildPackage.js",
         "test": "jest --coverage --config jestconfig.json",
         "format": "prettier --write \"src/**/*.ts\"",
-        "lint": "eslint --fix 'src/**/*.ts'"
+        "lint": "eslint --fix 'src/**/*.ts'",
+        "publish": "cd ./dist && npm publish"
     },
     "keywords": [],
     "author": "Newton Technology",
