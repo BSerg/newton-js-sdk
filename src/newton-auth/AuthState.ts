@@ -43,8 +43,12 @@ class AuthState {
         this.maskedEmail = data.masked_email;
         this.boClientId = data.bo_client_id;
         this.userId = data.user_id;
-        this.codeCanBeResubmittedTimestamp = data.code_can_be_resubmitted_timestamp;
-        this.codeExpiresTimestamp = data.code_expires_timestamp;
+        this.codeCanBeResubmittedTimestamp = data.code_can_be_resubmitted_timestamp !== undefined
+            ? data.code_can_be_resubmitted_timestamp * 1000
+            : undefined;
+        this.codeExpiresTimestamp = data.code_expires_timestamp !== undefined
+            ? data.code_expires_timestamp * 1000
+            : undefined;
     }
 }
 
