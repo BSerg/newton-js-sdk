@@ -67,8 +67,8 @@ describe('SHORT flow', () => {
             await newtonAuth.sendPhoneCode(phone_number);
             expect(newtonAuth.authState?.loginFlow).toEqual(AuthFlowScheme.SHORT);
             expect(newtonAuth.authState?.loginStep).toEqual(AuthFlowStep.VERIFY_PHONE_CODE);
-            expect(newtonAuth.authState?.codeCanBeResubmittedTimestamp).toBeTruthy();
-            expect(newtonAuth.authState?.codeExpiresTimestamp).toBeTruthy();
+            expect(newtonAuth.authState?.codeCanBeResubmittedTimestamp).toEqual(1624352914000);
+            expect(newtonAuth.authState?.codeExpiresTimestamp).toEqual(1624353154000);
         });
 
         it('should resolve correct response', async () => {
