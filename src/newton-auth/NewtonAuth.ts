@@ -91,10 +91,13 @@ class NewtonAuth {
         return this.postRequest(url, {password: newPassword}, {Authorization: `Bearer ${accessToken}`});
     }
 
-    public async resetPassword(): Promise<AuthResponse> {
+    public async resetPassword(accessToken?: string): Promise<AuthResponse> {
         this.validateFlowScheme(LoginFlow.Normal);
         this.validateFlowStep(LoginStep.GetMainToken);
-        return this.requestServiceToken({reset_password: true});
+        const header = accessToken
+            ? {Authorization: `Bearer ${accessToken}`}
+            : {};
+        return this.requestServiceToken({reset_password: true}, header);
     }
 
     public async refreshAccessToken(refreshToken: string): Promise<AuthResponse> {
@@ -184,17 +187,14 @@ class NewtonAuth {
 
     private async postRequest(url: string, params?: any, headers?: any) {
         try {
-            const _headers = {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                ...headers,
-            };
+            const _headers = {'Content-Type': 'application/x-www-form-urlencoded'};
             if (this._serviceToken) {
                 _headers['Authorization'] = `Bearer ${this._serviceToken}`;
             }
             const resp = await request
                 .post(url)
                 .send(params)
-                .set(_headers);
+                .set({..._headers, ...headers});
             if (resp.statusCode !== 200) {
                 throw new AuthError(resp.body);
             }

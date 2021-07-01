@@ -1,6 +1,6 @@
 {
     "name": "@newton-technology/newton-sdk",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "",
     "main": "dist/index.js",
     "files": [
@@ -16,7 +16,6 @@
     },
     "keywords": [],
     "author": "Newton Technology",
-    "license": "MIT",
     "repository": {
         "type": "git",
         "url": "git://github.com/newton-technology/newton-sdk.git"
