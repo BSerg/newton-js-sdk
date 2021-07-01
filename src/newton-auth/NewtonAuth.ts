@@ -1,7 +1,7 @@
 import request from 'superagent';
 
 import AuthError, {AuthErrorCode} from './AuthError';
-import AuthState, {AuthFlowScheme, AuthFlowStep} from './AuthState';
+import AuthState, {LoginFlow, LoginStep} from './AuthState';
 import AuthResponse from './AuthReponse';
 
 interface NewtonAuthParams {
@@ -61,25 +61,25 @@ class NewtonAuth {
     }
 
     public async verifyPhone(code: string): Promise<AuthResponse> {
-        this.validateFlowStep(AuthFlowStep.VERIFY_PHONE_CODE);
+        this.validateFlowStep(LoginStep.VerifyPhoneCode);
         return this.requestServiceToken({code});
     }
 
     public async sendEmailCode(email?: string): Promise<AuthResponse> {
-        this.validateFlowStep(AuthFlowStep.SEND_EMAIL_CODE);
+        this.validateFlowStep(LoginStep.SendEmailCode);
         return this.requestServiceToken({email});
     }
 
     public async verifyEmail(code: string): Promise<AuthResponse> {
-        this.validateFlowStep(AuthFlowStep.VERIFY_EMAIL_CODE);
+        this.validateFlowStep(LoginStep.VerifyEmailCode);
         return this.requestServiceToken({code});
     }
 
     public async authorize(password?: string): Promise<AuthResponse> {
-        this.validateFlowStep(AuthFlowStep.GET_MAIN_TOKEN);
-        if (this._authState?.loginFlow != AuthFlowScheme.SHORT && !password) {
+        this.validateFlowStep(LoginStep.GetMainToken);
+        if (this._authState?.loginFlow != LoginFlow.Short && !password) {
             throw new AuthError({
-                error: AuthErrorCode.PASSWORD_MISSING,
+                error: AuthErrorCode.PasswordMissing,
                 error_description: 'Password is required for this flow',
             });
         }
@@ -92,8 +92,8 @@ class NewtonAuth {
     }
 
     public async resetPassword(): Promise<AuthResponse> {
-        this.validateFlowScheme(AuthFlowScheme.NORMAL);
-        this.validateFlowStep(AuthFlowStep.GET_MAIN_TOKEN);
+        this.validateFlowScheme(LoginFlow.Normal);
+        this.validateFlowStep(LoginStep.GetMainToken);
         return this.requestServiceToken({reset_password: true});
     }
 
@@ -112,19 +112,19 @@ class NewtonAuth {
         this._serviceToken = null;
     }
 
-    private validateFlowScheme(scheme: AuthFlowScheme): void {
+    private validateFlowScheme(scheme: LoginFlow): void {
         if (this._authState?.loginFlow !== scheme) {
             throw new AuthError({
-                error: AuthErrorCode.INCORRECT_FLOW_SEQUENCE,
+                error: AuthErrorCode.IncorrectFlowSequence,
                 error_description: `Method is not allowed in scheme ${this._authState?.loginFlow}`,
             });
         }
     }
 
-    private validateFlowStep(step: AuthFlowStep): void {
+    private validateFlowStep(step: LoginStep): void {
         if (this._authState?.loginStep !== step) {
             throw new AuthError({
-                error: AuthErrorCode.INCORRECT_FLOW_SEQUENCE,
+                error: AuthErrorCode.IncorrectFlowSequence,
                 error_description: `Method is not allowed on step ${this._authState?.loginStep}`,
             });
         }
@@ -176,7 +176,7 @@ class NewtonAuth {
                 throw err;
             }
             throw new AuthError({
-                error: AuthErrorCode.UNKNOWN_ERROR,
+                error: AuthErrorCode.UnknownError,
                 error_description: 'Unknown error',
             });
         }
@@ -210,7 +210,7 @@ class NewtonAuth {
                 throw new AuthError(err.response.body)
             }
             throw new AuthError({
-                error: AuthErrorCode.UNKNOWN_ERROR,
+                error: AuthErrorCode.UnknownError,
                 error_description: 'Unknown error',
             });
         }

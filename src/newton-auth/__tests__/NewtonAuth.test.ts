@@ -3,7 +3,7 @@ import request from 'superagent';
 import AuthError, {AuthErrorCode} from '../AuthError';
 import AuthResponse from '../AuthReponse';
 import newtonAuth from '../NewtonAuth';
-import {AuthFlowScheme, AuthFlowStep} from '../AuthState';
+import {LoginFlow, LoginStep} from '../AuthState';
 
 beforeEach(() => {
     newtonAuth.config({
@@ -35,12 +35,12 @@ describe('validateFlow', () => {
     it('should throw error if step validation is failed', () => {
         expect(newtonAuth.authState?.loginStep).toBeUndefined();
         const protoNewtonAuth = Object.getPrototypeOf(newtonAuth);
-        expect(() => protoNewtonAuth.validateFlowStep(AuthFlowStep.GET_MAIN_TOKEN)).toThrow(AuthError);
+        expect(() => protoNewtonAuth.validateFlowStep(LoginStep.GetMainToken)).toThrow(AuthError);
     });
     it('should throw error if scheme validation is failed', () => {
         expect(newtonAuth.authState?.loginFlow).toBeUndefined();
         const protoNewtonAuth = Object.getPrototypeOf(newtonAuth);
-        expect(() => protoNewtonAuth.validateFlowScheme(AuthFlowScheme.SHORT)).toThrow(AuthError);
+        expect(() => protoNewtonAuth.validateFlowScheme(LoginFlow.Short)).toThrow(AuthError);
     });
 });
 
@@ -48,14 +48,14 @@ describe('validateFlowScheme', () => {
     it('should throw error if scheme validation is failed', () => {
         expect(newtonAuth.authState?.loginFlow).toBeUndefined();
         const protoNewtonAuth = Object.getPrototypeOf(newtonAuth);
-        expect(() => protoNewtonAuth.validateFlowScheme(AuthFlowScheme.SHORT)).toThrow(AuthError);
+        expect(() => protoNewtonAuth.validateFlowScheme(LoginFlow.Short)).toThrow(AuthError);
     });
 });
 
 describe('SHORT flow', () => {
     describe('sendPhoneCode', () => {
         beforeEach(() => {
-            mockResponse(responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.SEND_PHONE_CODE]);
+            mockResponse(responseOfStep[LoginFlow.Short][LoginStep.SendPhoneCode]);
         });
 
         it('should call post request once', async () => {
@@ -65,8 +65,8 @@ describe('SHORT flow', () => {
 
         it('should keep correct auth flow state', async () => {
             await newtonAuth.sendPhoneCode(phone_number);
-            expect(newtonAuth.authState?.loginFlow).toEqual(AuthFlowScheme.SHORT);
-            expect(newtonAuth.authState?.loginStep).toEqual(AuthFlowStep.VERIFY_PHONE_CODE);
+            expect(newtonAuth.authState?.loginFlow).toEqual(LoginFlow.Short);
+            expect(newtonAuth.authState?.loginStep).toEqual(LoginStep.VerifyPhoneCode);
             expect(newtonAuth.authState?.codeCanBeResubmittedTimestamp).toEqual(1624352914000);
             expect(newtonAuth.authState?.codeExpiresTimestamp).toEqual(1624353154000);
         });
@@ -77,10 +77,10 @@ describe('SHORT flow', () => {
             expect(result.accessTokenExpiresIn).toEqual(300);
             expect(result.refreshTokenExpiresIn).toEqual(1800);
             expect(result.accessToken).toEqual(
-                responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.SEND_PHONE_CODE].body.access_token,
+                responseOfStep[LoginFlow.Short][LoginStep.SendPhoneCode].body.access_token,
             );
             expect(result.refreshToken).toEqual(
-                responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.SEND_PHONE_CODE].body.refresh_token,
+                responseOfStep[LoginFlow.Short][LoginStep.SendPhoneCode].body.refresh_token,
             );
         });
 
@@ -96,16 +96,16 @@ describe('SHORT flow', () => {
             await expect(newtonAuth.sendPhoneCode(phone_number)).rejects.toBeInstanceOf(AuthError);
             await expect(newtonAuth.sendPhoneCode(phone_number)).rejects.toHaveProperty(
                 'error',
-                AuthErrorCode.UNKNOWN_ERROR,
+                AuthErrorCode.UnknownError,
             );
         });
 
         it('should reject correct error if an access token is invalid', async () => {
-            const invalidTokenHttpResp = errorHttpResponse[AuthFlowScheme.SHORT][AuthFlowStep.SEND_PHONE_CODE];
+            const invalidTokenHttpResp = errorHttpResponse[LoginFlow.Short][LoginStep.SendPhoneCode];
             mockResponse(invalidTokenHttpResp);
             await expect(newtonAuth.sendPhoneCode(phone_number)).rejects.toHaveProperty(
                 'error',
-                AuthErrorCode.UNKNOWN_ERROR,
+                AuthErrorCode.UnknownError,
             );
         });
 
@@ -114,7 +114,7 @@ describe('SHORT flow', () => {
             await expect(newtonAuth.sendPhoneCode(phone_number)).rejects.toBeInstanceOf(AuthError);
             await expect(newtonAuth.sendPhoneCode(phone_number)).rejects.toHaveProperty(
                 'error',
-                AuthErrorCode.UNKNOWN_ERROR,
+                AuthErrorCode.UnknownError,
             );
         });
     });
@@ -126,24 +126,24 @@ describe('SHORT flow', () => {
         });
 
         it('should reject error if auth flow state is not expected', async () => {
-            mockResponse(responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.VERIFY_PHONE_CODE]);
+            mockResponse(responseOfStep[LoginFlow.Short][LoginStep.VerifyPhoneCode]);
             await newtonAuth.verifyPhone(phone_code);
             await expect(newtonAuth.verifyPhone(phone_code)).rejects.toHaveProperty(
                 'error',
-                AuthErrorCode.INCORRECT_FLOW_SEQUENCE,
+                AuthErrorCode.IncorrectFlowSequence,
             );
         });
 
         it('should keep correct auth flow state', async () => {
-            mockResponse(responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.VERIFY_PHONE_CODE]);
+            mockResponse(responseOfStep[LoginFlow.Short][LoginStep.VerifyPhoneCode]);
             await newtonAuth.verifyPhone(phone_code);
-            expect(newtonAuth.authState?.loginFlow).toEqual(AuthFlowScheme.SHORT);
-            expect(newtonAuth.authState?.loginStep).toEqual(AuthFlowStep.GET_MAIN_TOKEN);
+            expect(newtonAuth.authState?.loginFlow).toEqual(LoginFlow.Short);
+            expect(newtonAuth.authState?.loginStep).toEqual(LoginStep.GetMainToken);
             expect(newtonAuth.authState?.phoneNumber).toEqual(phone_number);
         });
 
         it('should resolve correct result', async () => {
-            mockResponse(responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.VERIFY_PHONE_CODE]);
+            mockResponse(responseOfStep[LoginFlow.Short][LoginStep.VerifyPhoneCode]);
             const result = await newtonAuth.verifyPhone(phone_code);
             expect(result).toBeInstanceOf(AuthResponse);
         });
@@ -153,13 +153,13 @@ describe('SHORT flow', () => {
                 status: 401,
                 response: {
                     body: {
-                        error: AuthErrorCode.INVALID_GRANT,
+                        error: AuthErrorCode.InvalidGrant,
                     },
                 },
             });
             await expect(newtonAuth.verifyPhone(phone_code)).rejects.toHaveProperty(
                 'error',
-                AuthErrorCode.INVALID_GRANT,
+                AuthErrorCode.InvalidGrant,
             );
         })
     });
@@ -168,18 +168,18 @@ describe('SHORT flow', () => {
         beforeEach(async () => {
             mockResponse(sendPhoneCodeHttpResponse);
             await newtonAuth.sendPhoneCode(phone_number);
-            mockResponse(responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.VERIFY_PHONE_CODE]);
+            mockResponse(responseOfStep[LoginFlow.Short][LoginStep.VerifyPhoneCode]);
             await newtonAuth.verifyPhone(phone_code);
         });
 
         it('should reject error if auth flow state is not expected', async () => {
             mockResponse(sendPhoneCodeHttpResponse);
             await newtonAuth.sendPhoneCode(phone_number);
-            await expect(newtonAuth.authorize()).rejects.toHaveProperty('error', AuthErrorCode.INCORRECT_FLOW_SEQUENCE);
+            await expect(newtonAuth.authorize()).rejects.toHaveProperty('error', AuthErrorCode.IncorrectFlowSequence);
         });
 
         it('should resolve correct result', async () => {
-            mockResponse(responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.GET_MAIN_TOKEN]);
+            mockResponse(responseOfStep[LoginFlow.Short][LoginStep.GetMainToken]);
             const result = await newtonAuth.authorize();
             expect(result).toBeInstanceOf(AuthResponse);
             expect(newtonAuth.authState.loginFlow).toBeFalsy();
@@ -195,41 +195,41 @@ describe('NORMAL flow', () => {
         await newtonAuth.sendPhoneCode(phone_number);
         await expect(newtonAuth.authorize(password)).rejects.toHaveProperty(
             'error',
-            AuthErrorCode.INCORRECT_FLOW_SEQUENCE,
+            AuthErrorCode.IncorrectFlowSequence,
         );
-        mockResponse(responseOfStep[AuthFlowScheme.NORMAL][AuthFlowStep.VERIFY_PHONE_CODE]);
+        mockResponse(responseOfStep[LoginFlow.Normal][LoginStep.VerifyPhoneCode]);
         await newtonAuth.verifyPhone(phone_code);
-        await expect(newtonAuth.authorize()).rejects.toHaveProperty('error', AuthErrorCode.PASSWORD_MISSING);
+        await expect(newtonAuth.authorize()).rejects.toHaveProperty('error', AuthErrorCode.PasswordMissing);
         await expect(newtonAuth.authorize(password)).resolves.toBeInstanceOf(AuthResponse);
     });
 });
 
 describe('NORMAL_WITH_EMAIL flow', () => {
     beforeEach(async () => {
-        mockResponse(responseOfStep[AuthFlowScheme.NORMAL_WITH_EMAIL][AuthFlowStep.SEND_PHONE_CODE]);
+        mockResponse(responseOfStep[LoginFlow.NormalWithEmail][LoginStep.SendPhoneCode]);
         await newtonAuth.sendPhoneCode(phone_number);
-        mockResponse(responseOfStep[AuthFlowScheme.NORMAL_WITH_EMAIL][AuthFlowStep.VERIFY_PHONE_CODE]);
+        mockResponse(responseOfStep[LoginFlow.NormalWithEmail][LoginStep.VerifyPhoneCode]);
         await newtonAuth.verifyPhone(phone_code);
     });
     test('sendEmailCode() should resolve correct response with email', async () => {
-        mockResponse(responseOfStep[AuthFlowScheme.NORMAL_WITH_EMAIL][AuthFlowStep.SEND_EMAIL_CODE]);
+        mockResponse(responseOfStep[LoginFlow.NormalWithEmail][LoginStep.SendEmailCode]);
         await expect(newtonAuth.sendEmailCode(email)).resolves.toBeInstanceOf(AuthResponse);
     });
     test('sendEmailCode() should resolve correct response without email', async () => {
-        mockResponse(responseOfStep[AuthFlowScheme.NORMAL_WITH_EMAIL][AuthFlowStep.SEND_EMAIL_CODE]);
+        mockResponse(responseOfStep[LoginFlow.NormalWithEmail][LoginStep.SendEmailCode]);
         await expect(newtonAuth.sendEmailCode()).resolves.toBeInstanceOf(AuthResponse);
     });
     test('flow should be processed correctly', async () => {
-        mockResponse(responseOfStep[AuthFlowScheme.NORMAL_WITH_EMAIL][AuthFlowStep.SEND_EMAIL_CODE]);
+        mockResponse(responseOfStep[LoginFlow.NormalWithEmail][LoginStep.SendEmailCode]);
         await newtonAuth.sendEmailCode();
-        await expect(newtonAuth.sendEmailCode()).rejects.toHaveProperty('error', AuthErrorCode.INCORRECT_FLOW_SEQUENCE);
-        mockResponse(responseOfStep[AuthFlowScheme.NORMAL_WITH_EMAIL][AuthFlowStep.VERIFY_EMAIL_CODE]);
+        await expect(newtonAuth.sendEmailCode()).rejects.toHaveProperty('error', AuthErrorCode.IncorrectFlowSequence);
+        mockResponse(responseOfStep[LoginFlow.NormalWithEmail][LoginStep.VerifyEmailCode]);
         await newtonAuth.verifyEmail(email_code);
         await expect(newtonAuth.verifyEmail(email_code)).rejects.toHaveProperty(
             'error',
-            AuthErrorCode.INCORRECT_FLOW_SEQUENCE,
+            AuthErrorCode.IncorrectFlowSequence,
         );
-        await expect(newtonAuth.authorize()).rejects.toHaveProperty('error', AuthErrorCode.PASSWORD_MISSING);
+        await expect(newtonAuth.authorize()).rejects.toHaveProperty('error', AuthErrorCode.PasswordMissing);
         await expect(newtonAuth.authorize(password)).resolves.toBeInstanceOf(AuthResponse);
     });
 });
@@ -238,14 +238,14 @@ describe('refreshToken', () => {
     beforeEach(async () => {
         mockResponse(sendPhoneCodeHttpResponse);
         await newtonAuth.sendPhoneCode(phone_number);
-        mockResponse(responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.VERIFY_PHONE_CODE]);
+        mockResponse(responseOfStep[LoginFlow.Short][LoginStep.VerifyPhoneCode]);
         await newtonAuth.verifyPhone(phone_code);
     });
 
     it('should resolve correct result', async () => {
-        mockResponse(responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.GET_MAIN_TOKEN]);
+        mockResponse(responseOfStep[LoginFlow.Short][LoginStep.GetMainToken]);
         const resp = await newtonAuth.authorize();
-        mockResponse(responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.GET_MAIN_TOKEN]);
+        mockResponse(responseOfStep[LoginFlow.Short][LoginStep.GetMainToken]);
         await expect(newtonAuth.refreshAccessToken(resp.refreshToken)).resolves.toBeInstanceOf(AuthResponse);
     });
 });
@@ -254,7 +254,7 @@ describe('changePassword', () => {
     it('should resolve correct response', async () => {
         mockResponse(sendPhoneCodeHttpResponse);
         await newtonAuth.sendPhoneCode(phone_number);
-        mockResponse(responseOfStep[AuthFlowScheme.NORMAL][AuthFlowStep.VERIFY_PHONE_CODE]);
+        mockResponse(responseOfStep[LoginFlow.Normal][LoginStep.VerifyPhoneCode]);
         await newtonAuth.verifyPhone(phone_code);
         const response = await newtonAuth.authorize(password);
         await expect(newtonAuth.changePassword(response.accessToken, newPassword)).resolves.toBeInstanceOf(
@@ -265,24 +265,24 @@ describe('changePassword', () => {
 
 describe('resetPassword', () => {
     beforeEach(async () => {
-        mockResponse(responseOfStep[AuthFlowScheme.NORMAL][AuthFlowStep.SEND_PHONE_CODE]);
+        mockResponse(responseOfStep[LoginFlow.Normal][LoginStep.SendPhoneCode]);
         await newtonAuth.sendPhoneCode(phone_number);
     });
 
     it('should reject error if there is incorrect flow scheme', async () => {
-        mockResponse(responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.VERIFY_PHONE_CODE]);
+        mockResponse(responseOfStep[LoginFlow.Short][LoginStep.VerifyPhoneCode]);
         await newtonAuth.verifyPhone(phone_code);
-        await expect(newtonAuth.resetPassword()).rejects.toHaveProperty('error', AuthErrorCode.INCORRECT_FLOW_SEQUENCE);
+        await expect(newtonAuth.resetPassword()).rejects.toHaveProperty('error', AuthErrorCode.IncorrectFlowSequence);
     });
 
     it('should reject error if there is incorrect flow step', async () => {
-        mockResponse(responseOfStep[AuthFlowScheme.NORMAL][AuthFlowStep.SEND_PHONE_CODE]);
+        mockResponse(responseOfStep[LoginFlow.Normal][LoginStep.SendPhoneCode]);
         await newtonAuth.verifyPhone(phone_code);
-        await expect(newtonAuth.resetPassword()).rejects.toHaveProperty('error', AuthErrorCode.INCORRECT_FLOW_SEQUENCE);
+        await expect(newtonAuth.resetPassword()).rejects.toHaveProperty('error', AuthErrorCode.IncorrectFlowSequence);
     });
 
     it('should resolve correct response', async () => {
-        mockResponse(responseOfStep[AuthFlowScheme.NORMAL][AuthFlowStep.VERIFY_PHONE_CODE]);
+        mockResponse(responseOfStep[LoginFlow.Normal][LoginStep.VerifyPhoneCode]);
         await newtonAuth.verifyPhone(phone_code);
         await expect(newtonAuth.resetPassword()).resolves.toBeInstanceOf(AuthResponse);
     });
@@ -292,29 +292,29 @@ describe('revokeRefreshToken', () => {
     beforeEach(async () => {
         mockResponse(sendPhoneCodeHttpResponse);
         await newtonAuth.sendPhoneCode(phone_number);
-        mockResponse(responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.VERIFY_PHONE_CODE]);
+        mockResponse(responseOfStep[LoginFlow.Short][LoginStep.VerifyPhoneCode]);
         await newtonAuth.verifyPhone(phone_code);
     });
 
     it('should reject error if request is failed', async () => {
-        mockResponse(responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.GET_MAIN_TOKEN]);
+        mockResponse(responseOfStep[LoginFlow.Short][LoginStep.GetMainToken]);
         const resp = await newtonAuth.authorize();
         mockErrorResponse(errorHttpResponse);
         await expect(newtonAuth.revokeRefreshToken(resp.accessToken)).rejects.toHaveProperty(
             'error',
-            AuthErrorCode.UNKNOWN_ERROR,
+            AuthErrorCode.UnknownError,
         );
     });
 
     it('should resolve true if token is revoked successfully', async () => {
-        mockResponse(responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.GET_MAIN_TOKEN]);
+        mockResponse(responseOfStep[LoginFlow.Short][LoginStep.GetMainToken]);
         const resp = await newtonAuth.authorize();
         mockResponse({statusCode: 200});
         await expect(newtonAuth.revokeRefreshToken(resp.accessToken)).resolves.toBeTruthy();
     });
 
     it('should reject error if token is not revoked successfully', async () => {
-        mockResponse(responseOfStep[AuthFlowScheme.SHORT][AuthFlowStep.GET_MAIN_TOKEN]);
+        mockResponse(responseOfStep[LoginFlow.Short][LoginStep.GetMainToken]);
         const resp = await newtonAuth.authorize(password);
         mockResponse({statusCode: 500});
         await expect(newtonAuth.revokeRefreshToken(resp.accessToken)).rejects.toBeInstanceOf(AuthError);
@@ -331,7 +331,7 @@ const newPassword = 'new_password';
 const unknownErrorHttpResponse = {
     statusCode: 500,
     body: {
-        error: AuthErrorCode.UNKNOWN_ERROR,
+        error: AuthErrorCode.UnknownError,
         error_description: 'Some unknown error',
     },
 };
@@ -353,8 +353,8 @@ const sendPhoneCodeHttpResponse = {
 };
 
 const errorHttpResponse = {
-    [AuthFlowScheme.SHORT]: {
-        [AuthFlowStep.SEND_PHONE_CODE]: {
+    [LoginFlow.Short]: {
+        [LoginStep.SendPhoneCode]: {
             statusCode: 200,
             body: {
                 access_token: 'invalid_token',
@@ -372,8 +372,8 @@ const errorHttpResponse = {
 };
 
 const responseOfStep = {
-    [AuthFlowScheme.SHORT]: {
-        [AuthFlowStep.SEND_PHONE_CODE]: {
+    [LoginFlow.Short]: {
+        [LoginStep.SendPhoneCode]: {
             statusCode: 200,
             body: {
                 access_token:
@@ -388,7 +388,7 @@ const responseOfStep = {
                 scope: '',
             },
         },
-        [AuthFlowStep.VERIFY_PHONE_CODE]: {
+        [LoginStep.VerifyPhoneCode]: {
             statusCode: 200,
             body: {
                 access_token:
@@ -403,7 +403,7 @@ const responseOfStep = {
                 scope: '',
             },
         },
-        [AuthFlowStep.GET_MAIN_TOKEN]: {
+        [LoginStep.GetMainToken]: {
             statusCode: 200,
             body: {
                 access_token:
@@ -419,8 +419,8 @@ const responseOfStep = {
             },
         },
     },
-    [AuthFlowScheme.NORMAL]: {
-        [AuthFlowStep.SEND_PHONE_CODE]: {
+    [LoginFlow.Normal]: {
+        [LoginStep.SendPhoneCode]: {
             statusCode: 200,
             body: {
                 access_token:
@@ -435,7 +435,7 @@ const responseOfStep = {
                 scope: '',
             },
         },
-        [AuthFlowStep.VERIFY_PHONE_CODE]: {
+        [LoginStep.VerifyPhoneCode]: {
             statusCode: 200,
             body: {
                 access_token:
@@ -450,7 +450,7 @@ const responseOfStep = {
                 scope: '',
             },
         },
-        [AuthFlowStep.GET_MAIN_TOKEN]: {
+        [LoginStep.GetMainToken]: {
             statusCode: 200,
             body: {
                 access_token:
@@ -466,8 +466,8 @@ const responseOfStep = {
             },
         },
     },
-    [AuthFlowScheme.NORMAL_WITH_EMAIL]: {
-        [AuthFlowStep.SEND_PHONE_CODE]: {
+    [LoginFlow.NormalWithEmail]: {
+        [LoginStep.SendPhoneCode]: {
             statusCode: 200,
             body: {
                 access_token:
@@ -482,7 +482,7 @@ const responseOfStep = {
                 scope: '',
             },
         },
-        [AuthFlowStep.VERIFY_PHONE_CODE]: {
+        [LoginStep.VerifyPhoneCode]: {
             statusCode: 200,
             body: {
                 access_token:
@@ -497,7 +497,7 @@ const responseOfStep = {
                 scope: '',
             },
         },
-        [AuthFlowStep.SEND_EMAIL_CODE]: {
+        [LoginStep.SendEmailCode]: {
             statusCode: 200,
             body: {
                 access_token:
@@ -512,7 +512,7 @@ const responseOfStep = {
                 scope: '',
             },
         },
-        [AuthFlowStep.VERIFY_EMAIL_CODE]: {
+        [LoginStep.VerifyEmailCode]: {
             statusCode: 200,
             body: {
                 access_token:
@@ -527,7 +527,7 @@ const responseOfStep = {
                 scope: '',
             },
         },
-        [AuthFlowStep.GET_MAIN_TOKEN]: {
+        [LoginStep.GetMainToken]: {
             statusCode: 200,
             body: {
                 access_token:

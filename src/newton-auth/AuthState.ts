@@ -1,8 +1,8 @@
 import jwtDecode from 'jwt-decode';
 
 interface IServiceAccessToken {
-    login_flow?: AuthFlowScheme;
-    login_step?: AuthFlowStep;
+    login_flow?: LoginFlow;
+    login_step?: LoginStep;
     phone_number?: string;
     masked_email?: string;
     bo_client_id?: string;
@@ -11,23 +11,23 @@ interface IServiceAccessToken {
     code_expires_timestamp?: number;
 }
 
-export enum AuthFlowScheme {
-    SHORT = 'SHORT',
-    NORMAL = 'NORMAL',
-    NORMAL_WITH_EMAIL = 'NORMAL_WITH_EMAIL',
+export enum LoginFlow {
+    Short = 'SHORT',
+    Normal = 'NORMAL',
+    NormalWithEmail = 'NORMAL_WITH_EMAIL',
 }
 
-export enum AuthFlowStep {
-    SEND_PHONE_CODE = 'SEND_PHONE_CODE',
-    VERIFY_PHONE_CODE = 'VERIFY_PHONE_CODE',
-    SEND_EMAIL_CODE = 'SEND_EMAIL_CODE',
-    VERIFY_EMAIL_CODE = 'VERIFY_EMAIL_CODE',
-    GET_MAIN_TOKEN = 'GET_MAIN_TOKEN',
+export enum LoginStep {
+    SendPhoneCode = 'SEND_PHONE_CODE',
+    VerifyPhoneCode = 'VERIFY_PHONE_CODE',
+    SendEmailCode = 'SEND_EMAIL_CODE',
+    VerifyEmailCode = 'VERIFY_EMAIL_CODE',
+    GetMainToken = 'GET_MAIN_TOKEN',
 }
 
 class AuthState {
-    public readonly loginFlow?: AuthFlowScheme;
-    public readonly loginStep?: AuthFlowStep;
+    public readonly loginFlow?: LoginFlow;
+    public readonly loginStep?: LoginStep;
     public readonly phoneNumber?: string;
     public readonly maskedEmail?: string;
     public readonly boClientId?: string;
