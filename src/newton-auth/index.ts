@@ -1,7 +1,3 @@
-class NewtonAuth {
-    public hello(name: string) {
-        return `Hello ${name}`;
-    }
-}
+import NewtonAuth from './NewtonAuth';
 
 export default NewtonAuth;
