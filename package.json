@@ -1,6 +1,6 @@
 {
-    "name": "@newton-technology/newton-sdk",
-    "version": "0.1.1",
+    "name": "newton-technology-sdk",
+    "version": "0.1.3",
     "description": "",
     "main": "dist/index.js",
     "files": [
@@ -12,16 +12,13 @@
         "test": "jest --coverage --config jestconfig.json",
         "format": "prettier --write \"src/**/*.ts\"",
         "lint": "eslint --fix 'src/**/*.ts'",
-        "publish": "cd ./dist && npm publish"
+        "publish": "npm run build && cd ./dist && npm publish"
     },
     "keywords": [],
     "author": "Newton Technology",
     "repository": {
         "type": "git",
         "url": "git://github.com/newton-technology/newton-sdk.git"
-    },
-    "publishConfig": {
-        "registry": "https://npm.pkg.github.com"
     },
     "devDependencies": {
         "@rollup/plugin-commonjs": "19.0.0",
