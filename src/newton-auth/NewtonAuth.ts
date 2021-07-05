@@ -92,8 +92,10 @@ class NewtonAuth {
     }
 
     public async resetPassword(accessToken?: string): Promise<AuthResponse> {
-        this.validateFlowScheme(LoginFlow.Normal);
-        this.validateFlowStep(LoginStep.GetMainToken);
+        if (!accessToken) {
+            this.validateFlowScheme(LoginFlow.Normal);
+            this.validateFlowStep(LoginStep.GetMainToken);
+        }
         const header = accessToken
             ? {Authorization: `Bearer ${accessToken}`}
             : {};

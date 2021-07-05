@@ -286,6 +286,16 @@ describe('resetPassword', () => {
         await newtonAuth.verifyPhone(phone_code);
         await expect(newtonAuth.resetPassword()).resolves.toBeInstanceOf(AuthResponse);
     });
+
+    it('should ignore flow scheme and step if reset with main token', async () => {
+        mockResponse(sendPhoneCodeHttpResponse);
+        await newtonAuth.sendPhoneCode(phone_number);
+        mockResponse(responseOfStep[LoginFlow.Normal][LoginStep.VerifyPhoneCode]);
+        await newtonAuth.verifyPhone(phone_code);
+        mockResponse(responseOfStep[LoginFlow.Normal][LoginStep.GetMainToken]);
+        const resp = await newtonAuth.authorize(password);
+        await expect(newtonAuth.resetPassword(resp.accessToken)).resolves.toBeInstanceOf(AuthResponse);
+    });
 });
 
 describe('revokeRefreshToken', () => {
