@@ -211,6 +211,14 @@ describe('NORMAL_WITH_EMAIL flow', () => {
         mockResponse(responseOfStep[LoginFlow.NormalWithEmail][LoginStep.VerifyPhoneCode]);
         await newtonAuth.verifyPhone(phone_code);
     });
+    test('resendEmailCode() should reject error', async () => {
+        await expect(newtonAuth.resendEmailCode()).rejects.toHaveProperty('error', AuthErrorCode.IncorrectFlowSequence);
+    });
+    test('resendEmailCode() should resolve correct response after sending code', async () => {
+        mockResponse(responseOfStep[LoginFlow.NormalWithEmail][LoginStep.SendEmailCode]);
+        await newtonAuth.sendEmailCode(email);
+        await expect(newtonAuth.resendEmailCode()).resolves.toBeInstanceOf(AuthResponse);
+    });
     test('sendEmailCode() should resolve correct response with email', async () => {
         mockResponse(responseOfStep[LoginFlow.NormalWithEmail][LoginStep.SendEmailCode]);
         await expect(newtonAuth.sendEmailCode(email)).resolves.toBeInstanceOf(AuthResponse);
