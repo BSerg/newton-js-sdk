@@ -67,8 +67,8 @@ class NewtonAuth {
     }
 
     public async sendEmailCode(email?: string): Promise<AuthResponse> {
-        this._sendEmailCodeServiceToken = this._serviceToken;
         this.validateFlowStep(LoginStep.SendEmailCode);
+        this._sendEmailCodeServiceToken = this._serviceToken;
         return this.requestServiceToken({email});
     }
 
