@@ -19,6 +19,7 @@ class NewtonAuth {
     private _realm: string;
     private _serviceRealm: string;
 
+    public _sendEmailCodeServiceToken: string | null = null;
     private _serviceToken: string | null = null;
     private _authState: AuthState | null = null;
 
@@ -66,8 +67,19 @@ class NewtonAuth {
     }
 
     public async sendEmailCode(email?: string): Promise<AuthResponse> {
+        this._sendEmailCodeServiceToken = this._serviceToken;
         this.validateFlowStep(LoginStep.SendEmailCode);
         return this.requestServiceToken({email});
+    }
+
+    public async resendEmailCode(email?: string): Promise<AuthResponse> {
+        if (!this._sendEmailCodeServiceToken) {
+            throw new AuthError({
+                error: AuthErrorCode.IncorrectFlowSequence,
+                error_description: `Resending not allowed while a code has not been sent in main auth flow`,
+            });
+        }
+        return this.requestServiceToken({email}, {Authorization: `Bearer ${this._sendEmailCodeServiceToken}`});
     }
 
     public async verifyEmail(code: string): Promise<AuthResponse> {
@@ -115,6 +127,7 @@ class NewtonAuth {
     public reset(): void {
         this._authState = null;
         this._serviceToken = null;
+        this._sendEmailCodeServiceToken = null;
     }
 
     private validateFlowScheme(scheme: LoginFlow): void {
