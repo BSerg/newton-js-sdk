@@ -19,6 +19,7 @@ export enum AuthErrorCode {
     CodeMissing = 'code_missing',
     CodeAlreadySubmitted = 'code_already_submitted',
     PasswordMissing = 'password_missing',
+    AttemptsOtpCheckExceeded = 'attempts_otp_check_exceeded',
 }
 
 export default class AuthError {
