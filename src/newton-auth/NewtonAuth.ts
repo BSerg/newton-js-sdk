@@ -108,9 +108,7 @@ class NewtonAuth {
             this.validateFlowScheme(LoginFlow.Normal);
             this.validateFlowStep(LoginStep.GetMainToken);
         }
-        const header = accessToken
-            ? {Authorization: `Bearer ${accessToken}`}
-            : {};
+        const header = accessToken ? {Authorization: `Bearer ${accessToken}`} : {};
         return this.requestServiceToken({reset_password: true}, header);
     }
 
@@ -222,7 +220,7 @@ class NewtonAuth {
                 throw err;
             }
             if (err.response?.body) {
-                throw new AuthError(err.response.body)
+                throw new AuthError(err.response.body);
             }
             throw new AuthError({
                 error: AuthErrorCode.UnknownError,
