@@ -161,7 +161,7 @@ describe('SHORT flow', () => {
                 'error',
                 AuthErrorCode.InvalidGrant,
             );
-        })
+        });
     });
 
     describe('authorize', () => {

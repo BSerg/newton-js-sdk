@@ -9,6 +9,8 @@ interface IServiceAccessToken {
     user_id?: string;
     code_can_be_resubmitted_timestamp?: number;
     code_expires_timestamp?: number;
+    otp_checks_left?: number;
+    otp_sends_left?: number;
 }
 
 export enum LoginFlow {
@@ -34,6 +36,8 @@ class AuthState {
     public readonly userId?: string;
     public readonly codeCanBeResubmittedTimestamp?: number;
     public readonly codeExpiresTimestamp?: number;
+    public readonly otpChecksLeft?: number;
+    public readonly otpSendsLeft?: number;
 
     public constructor(token: string) {
         const data = jwtDecode<IServiceAccessToken>(token);
@@ -49,6 +53,8 @@ class AuthState {
         this.codeExpiresTimestamp = data.code_expires_timestamp !== undefined
             ? data.code_expires_timestamp * 1000
             : undefined;
+        this.otpChecksLeft = data.otp_checks_left;
+        this.otpSendsLeft = data.otp_sends_left;
     }
 }
 
